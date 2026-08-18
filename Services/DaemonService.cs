@@ -31,7 +31,7 @@ public class DaemonService
         }
         else
         {
-            _os = "linux-";
+            _os = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "macos-" : "linux-";
 
             if (RuntimeInformation.OSArchitecture.ToString() == "X64")
             {

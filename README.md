@@ -4,7 +4,7 @@ This application requires <a href="https://adoptium.net/temurin/releases/?versio
 ## About
 Installs the Haveno daemon and starts a reverse proxy to translate grpc-web from the Haveno app. The remote node runs a hidden service so no port forwarding is required.
 
-Currently works on windows and linux
+Currently works on windows, linux and macos
 
 > [!note]
 > This repository is configured for the public test network/stagenet. You will need to use a third party mainnet network to make real trades. The developers of this repository do not endorse any networks at this time.

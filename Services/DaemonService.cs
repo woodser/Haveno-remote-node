@@ -31,7 +31,7 @@ public class DaemonService
         }
         else
         {
-            _os = "linux-";
+            _os = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "macos-" : "linux-";
 
             if (RuntimeInformation.OSArchitecture.ToString() == "X64")
             {
@@ -364,25 +364,26 @@ public class DaemonService
             throw new Exception("Node is already running");
         }
 
-        var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
+        // use ArgumentList so paths with spaces (e.g. ~/Library/Application Support) are quoted correctly
         ProcessStartInfo startInfo = new()
         {
             FileName = "java",
-            Arguments = "-jar " +
-                        Path.Combine(_daemonPath, "daemon.jar") +
-                        " " +
-                        $"--baseCurrencyNetwork={AppConstants.Network} " +
-                        "--useLocalhostForP2P=false " +
-                        "--useDevPrivilegeKeys=false " +
-                        "--nodePort=9999 " +
-                        $"--appDataDir={_dataPath} " +
-                        $"--appName={AppConstants.HavenoAppName} " +
-                        $"--apiPassword={password} " +
-                        "--apiPort=3201 " +
-                        "--passwordRequired=false " +
-                        "--disableRateLimits=true " +
-                        "--useNativeXmrWallet=false ",
+            ArgumentList =
+            {
+                "-jar",
+                Path.Combine(_daemonPath, "daemon.jar"),
+                $"--baseCurrencyNetwork={AppConstants.Network}",
+                "--useLocalhostForP2P=false",
+                "--useDevPrivilegeKeys=false",
+                "--nodePort=9999",
+                $"--appDataDir={_dataPath}",
+                $"--appName={AppConstants.HavenoAppName}",
+                $"--apiPassword={password}",
+                "--apiPort=3201",
+                "--passwordRequired=false",
+                "--disableRateLimits=true",
+                "--useNativeXmrWallet=false",
+            },
 
             WorkingDirectory = currentDirectory
         };

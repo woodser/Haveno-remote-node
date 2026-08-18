@@ -4,7 +4,7 @@ This application requires <a href="https://adoptium.net/temurin/releases/?versio
 ## About
 Installs the Haveno daemon and starts a reverse proxy to translate grpc-web from the Haveno app. The remote node runs a hidden service so no port forwarding is required.
 
-Currently works on windows and linux
+Currently works on windows, linux and macos
 
 > [!note]
 > This repository is configured for the public test network/stagenet. You will need to use a third party mainnet network to make real trades. The developers of this repository do not endorse any networks at this time.
@@ -14,7 +14,7 @@ The application can be built using GitHub actions and is set up to trigger a bui
 
 1. Set up your Haveno repo to build the daemon
 	
-	Merge https://github.com/haveno-dex/haveno/commit/fc788c6f646fdfb6bf97493d0368101709867174.
+	Haveno builds the daemon jars for every platform on release. macos clients need daemon-macos-x86_64.jar and daemon-macos-aarch64.jar, added by https://github.com/haveno-dex/haveno/commit/20970b976a and included in releases after v1.8.0.
 
 2. Open Manta.Remote.csproj in a text editor
 
@@ -27,6 +27,19 @@ The application can be built using GitHub actions and is set up to trigger a bui
 ## Install
 1. Download one of the releases or build from source
 2. Unzip
-3. chmod +x Manta.Remote 
+3. chmod +x haveno-remote-node-[platform]
 4. Install Java 21
-5. Run Manta.Remote
+5. Run haveno-remote-node-[platform]
+
+### macos
+Use the osx-arm64 release on Apple Silicon and osx-x64 on Intel. The releases are not notarized, so clear the quarantine flag after unzipping:
+
+```
+xattr -dr com.apple.quarantine haveno-remote-node-osx-arm64
+```
+
+Apple Silicon also needs Rosetta 2, since the daemon ships x86_64 monero binaries:
+
+```
+softwareupdate --install-rosetta --agree-to-license
+```

@@ -17,11 +17,14 @@ namespace Manta.Remote.Services;
 
 public class DaemonService
 {
+    private const int ProxyPort = 2134;
+
     private readonly string _os;
     private readonly string _daemonUrlFileName = "installed-daemon-url";
     private readonly string _basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppConstants.HavenoAppName);
     private readonly string _daemonPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppConstants.HavenoAppName, "daemon");
     private readonly string _dataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppConstants.HavenoAppName, "data");
+    private Process? _daemonProcess;
 
     public DaemonService()
     {
@@ -280,13 +283,34 @@ public class DaemonService
         }
     }
 
+    /// <summary>
+    /// Waits for the daemon to publish the reverse proxy as its api hidden service.
+    /// </summary>
+    public async Task<string> GetOnionAddressAsync()
+    {
+        var hostnameFile = Path.Combine(_dataPath, AppConstants.Network.ToLowerInvariant(), "tor", "hiddenservice", "api", "hostname");
+
+        Console.WriteLine("Waiting for the daemon to publish the hidden service...");
+
+        while (true)
+        {
+            if (File.Exists(hostnameFile))
+                return (await File.ReadAllTextAsync(hostnameFile)).Trim();
+
+            if (_daemonProcess is not null && _daemonProcess.HasExited)
+                throw new Exception($"Haveno daemon exited with code {_daemonProcess.ExitCode} before publishing the hidden service");
+
+            await Task.Delay(1000);
+        }
+    }
+
     public async Task StartReverseProxyAsync()
     {
         var builder = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
         {
             webBuilder.ConfigureKestrel(serverOptions =>
             {
-                serverOptions.Listen(IPAddress.Any, 2134, listenOptions =>
+                serverOptions.Listen(IPAddress.Loopback, ProxyPort, listenOptions =>
                 {
                     listenOptions.Protocols = HttpProtocols.Http1;
                 });
@@ -389,6 +413,8 @@ public class DaemonService
                 $"--appName={AppConstants.HavenoAppName}",
                 $"--apiPassword={password}",
                 "--apiPort=3201",
+                "--apiHiddenService=true",
+                $"--apiHiddenServicePort={ProxyPort}",
                 "--passwordRequired=false",
                 "--disableRateLimits=true",
                 "--useNativeXmrWallet=false",
@@ -397,7 +423,7 @@ public class DaemonService
             WorkingDirectory = currentDirectory
         };
 
-        var process = Process.Start(startInfo);
+        var process = _daemonProcess = Process.Start(startInfo);
 
         if (process is null)
             throw new Exception("process was null");

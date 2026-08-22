@@ -92,7 +92,16 @@ public class DaemonService
     {
         using var client = new HttpClient();
 
-        var bytes = await client.GetByteArrayAsync($"{daemonUrl}/daemon-{_os}.jar");
+        var jarUrl = $"{daemonUrl}/daemon-{_os}.jar";
+        using var response = await client.GetAsync(jarUrl);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            throw new Exception($"No daemon jar for {_os} at {jarUrl}. Ask the network operator to publish daemon-{_os}.jar, or set DaemonUrl to a release which has it.");
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Could not download {jarUrl}: {(int)response.StatusCode} {response.ReasonPhrase}");
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
 
         using MemoryStream memoryStream = new(bytes);
 

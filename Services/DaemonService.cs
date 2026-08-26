@@ -31,7 +31,7 @@ public class DaemonService
         }
         else
         {
-            _os = "linux-";
+            _os = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "macos-" : "linux-";
 
             if (RuntimeInformation.OSArchitecture.ToString() == "X64")
             {
@@ -92,7 +92,16 @@ public class DaemonService
     {
         using var client = new HttpClient();
 
-        var bytes = await client.GetByteArrayAsync($"{daemonUrl}/daemon-{_os}.jar");
+        var jarUrl = $"{daemonUrl}/daemon-{_os}.jar";
+        using var response = await client.GetAsync(jarUrl);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            throw new Exception($"No daemon jar for {_os} at {jarUrl}. Ask the network operator to publish daemon-{_os}.jar, or set DaemonUrl to a release which has it.");
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Could not download {jarUrl}: {(int)response.StatusCode} {response.ReasonPhrase}");
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
 
         using MemoryStream memoryStream = new(bytes);
 
@@ -364,25 +373,26 @@ public class DaemonService
             throw new Exception("Node is already running");
         }
 
-        var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
+        // use ArgumentList so paths with spaces (e.g. ~/Library/Application Support) are quoted correctly
         ProcessStartInfo startInfo = new()
         {
             FileName = "java",
-            Arguments = "-jar " +
-                        Path.Combine(_daemonPath, "daemon.jar") +
-                        " " +
-                        $"--baseCurrencyNetwork={AppConstants.Network} " +
-                        "--useLocalhostForP2P=false " +
-                        "--useDevPrivilegeKeys=false " +
-                        "--nodePort=9999 " +
-                        $"--appDataDir={_dataPath} " +
-                        $"--appName={AppConstants.HavenoAppName} " +
-                        $"--apiPassword={password} " +
-                        "--apiPort=3201 " +
-                        "--passwordRequired=false " +
-                        "--disableRateLimits=true " +
-                        "--useNativeXmrWallet=false ",
+            ArgumentList =
+            {
+                "-jar",
+                Path.Combine(_daemonPath, "daemon.jar"),
+                $"--baseCurrencyNetwork={AppConstants.Network}",
+                "--useLocalhostForP2P=false",
+                "--useDevPrivilegeKeys=false",
+                "--nodePort=9999",
+                $"--appDataDir={_dataPath}",
+                $"--appName={AppConstants.HavenoAppName}",
+                $"--apiPassword={password}",
+                "--apiPort=3201",
+                "--passwordRequired=false",
+                "--disableRateLimits=true",
+                "--useNativeXmrWallet=false",
+            },
 
             WorkingDirectory = currentDirectory
         };
